@@ -1,0 +1,132 @@
+---
+title: "assignment 2"
+author: "Arvind G E"
+date: "October 10, 2017"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Loading Given Data from Excel
+library(readxl)
+library(boot)
+Training_set <- read_excel("E:/MS Study materials/613 Data Analysis/Mid-term/Training set.xlsx")
+names(Training_set)
+```
+
+```{r}
+# Model 1
+# Fitting the response variable using all predictors to find their significance and outlier points:
+lm.fit = lm(Ra~.,data = Training_set)
+summary(lm.fit)
+```
+
+```{r}
+par(mfrow=c(2,2))
+plot(lm.fit)
+```
+
+```{r}
+# Checking which predictors have a correlation with the response and which predictors have a high correlation amongst themselves
+library(corrplot)
+corrplot(cor(data.frame(Training_set)))
+```
+
+```{r}
+# Checking Variation Inflation Factors:
+library(car)
+vif(lm(Ra~.,data = Training_set))
+```
+
+```{r}
+# Removing data points (49,114) because they lie outside Cook's distance in 'Residuals Vs Leverage' plot
+Training_set = Training_set[-c(49,114),]
+lm.fit = lm(Ra~.,data = Training_set)
+summary(lm.fit)
+
+```
+```{r}
+par(mfrow=c(2,2))
+plot(lm.fit)
+```
+
+```{r}
+# Model 2
+# Response Ra seems to have a non-linear relationship with variables, so I am 
+lm.fit = lm(Ra^3~.,data = Training_set)
+summary(lm.fit)
+par(mfrow=c(2,2))
+plot(lm.fit)
+## The residual plots don't look as good as they were for response 'Ra'
+```
+
+```{r}
+# Model 3
+## Using cube root values of predictors which had a good significance with Ra when it was raised to power 3 and using other predictors in their linear form.
+lm.fit = lm(Ra~I(feed_rate^(1/3)) + wheel_speed + work_speed+ I(peak_power^(1/3))  + std_power + skewness_power + kurtosis_power + p2p_power + log(peak_mag_an) + energy_band2_an + peak_mag_at  + mean_at + skewness_at + kurtosis_at + total_energy_at + energy_band1_at  + I(energy_band2_at^(1/3)), data = Training_set)
+summary(lm.fit)
+```
+
+```{r}
+# Model 4
+## There are many predictors with very low significance. So removing few variables with low significance.
+lm.fit = lm(Ra~I(feed_rate^(1/3)) + wheel_speed + work_speed+ I(peak_power^(1/3))  + std_power +  kurtosis_power + log(peak_mag_an) + peak_mag_at  + mean_at + skewness_at + kurtosis_at + total_energy_at + energy_band1_at  + I(energy_band2_at^(1/3)), data = Training_set)
+summary(lm.fit)
+
+```
+```{r}
+# Checking Variation Inflation Factor:
+vif(lm(Ra~I(feed_rate^(1/3)) + wheel_speed + work_speed+ I(peak_power^(1/3))  + std_power +  kurtosis_power + log(peak_mag_an) + peak_mag_at  + mean_at + skewness_at + kurtosis_at + total_energy_at + energy_band1_at  + I(energy_band2_at^(1/3)), data = Training_set))
+```
+
+```{r}
+#Model 5:
+## Further removal of insignificant predictors and variables with high Variation Inflation Factor.
+lm.fit = lm(Ra~I(feed_rate^(1/3)) + wheel_speed + work_speed+ I(peak_power^(1/3))  + std_power +  kurtosis_power + log(peak_mag_an) + peak_mag_at  + mean_at + skewness_at + kurtosis_at + total_energy_at + energy_band1_at  + I(energy_band2_at^(1/3)), data = Training_set)
+summary(lm.fit)
+vif(lm(Ra~I(feed_rate^(1/3)) + wheel_speed + work_speed+ I(peak_power^(1/3))  + std_power +  kurtosis_power + log(peak_mag_an) + peak_mag_at  + mean_at + skewness_at + kurtosis_at + total_energy_at + energy_band1_at  + I(energy_band2_at^(1/3)), data = Training_set))
+```
+
+
+```{r}
+# Model 6:
+##Removing few more predictors, all the current predictors are significant.
+lm.fit = lm(Ra~I(feed_rate^(1/3)) + wheel_speed + I(peak_power^(1/3))  + std_power + kurtosis_power + log(peak_mag_an) + mean_at + total_energy_at  + I(energy_band2_at^(1/3)), data = Training_set)
+summary(lm.fit)
+cv.error.10 = cv.glm(Training_set,lm.fit,K=5)$delta[1]
+```
+
+```{r}
+par(mfrow=c(2,2))
+plot(lm.fit)
+## Plots look fairly good
+```
+
+```{r}
+vif(lm(Ra~I(feed_rate^(1/3)) + wheel_speed + I(peak_power^(1/3))  + std_power + kurtosis_power + log(peak_mag_an) + mean_at + total_energy_at  + I(energy_band2_at^(1/3)), data = Training_set))
+# VIF value has come down. It's still high. But removal of more variables than this reduces the R squared considerably.
+```
+
+```{r}
+# Cross Validating:
+lm.fit = glm(Ra~I(feed_rate^(1/3)) + wheel_speed + I(peak_power^(1/3))  + std_power + kurtosis_power + log(peak_mag_an) + mean_at + total_energy_at  + I(energy_band2_at^(1/3)), data = Training_set)
+summary(lm.fit)
+set.seed(2)
+cv.error.10 = cv.glm(Training_set,lm.fit,K=5)$delta[1]
+cv.error.10
+```
+```{r}
+#Model 7
+## Comparing another model where I remove one predictor, 'peak_mag_an' and comparing with cross-validation error
+lm.fit = glm(Ra~I(feed_rate^(1/3)) + wheel_speed + I(peak_power^(1/3))  + std_power + kurtosis_power + mean_at + total_energy_at  + I(energy_band2_at^(1/3)), data = Training_set)
+set.seed(2)
+cv.error.10 = cv.glm(Training_set,lm.fit,K=5)$delta[1]
+cv.error.10
+```
+
+
